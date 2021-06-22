@@ -77,7 +77,7 @@ void Scanner::OnBarcodeDecorator(py::object& obj) {
 	on_barcode.push_back(obj);
 }
 
-void Scanner::OnBarcode(py::object& obj) {
+void Scanner::OnBarcode(Barcode& obj) {
 	for(std::vector<py::object>::iterator i=on_barcode.begin();i!=on_barcode.end();++i) {
 	    call_python(*i, obj);
 	}
@@ -465,8 +465,7 @@ void CoreScanner::OnBarcodeEvent(short int eventType, std::string & pscanData)
 		Barcode b;
 		b.code = result;
 		b.type = std::stoi(scanData.child_value("datatype"));
-		py::object o = py::cast(b);
-		s.OnBarcode(o);
+		s.OnBarcode(b);
 	}
 }
 
