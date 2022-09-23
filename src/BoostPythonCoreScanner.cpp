@@ -82,7 +82,7 @@ void Scanner::OnBarcodeDecorator(py::object& obj) {
 	on_barcode.push_back(obj);
 }
 
-void Scanner::OnBarcode(py::object& obj) {
+void Scanner::OnBarcode(Barcode& obj) {
 	for(std::vector<py::object>::iterator i=on_barcode.begin();i!=on_barcode.end();++i) {
 	    call_python(*i, obj, false);
 	}
@@ -90,7 +90,7 @@ void Scanner::OnBarcode(py::object& obj) {
 
 void Scanner::PullTrigger()
 {
-    StatusID status; 
+    StatusID status;
     std::string inXml = "<inArgs><scannerID>" + scannerID + "</scannerID></inArgs>";
     std::string outXml;
     ::ExecCommand(CMD_DEVICE_PULL_TRIGGER, inXml, outXml, &status);
@@ -135,7 +135,7 @@ CoreScanner::CoreScanner()
 	: is_open(false)
 {
 	CORE_SCANNER_SINGLETON = this;
-	PyEval_InitThreads();	
+	PyEval_InitThreads();
 	std::signal(SIGINT, signal_handler_close);
 	std::signal(SIGTERM, signal_handler_close);
 	Open();
@@ -161,7 +161,7 @@ void CoreScanner::Open()
 	is_open = true;
 }
 
-#include <algorithm> 
+#include <algorithm>
 #include <cctype>
 #include <locale>
 
@@ -222,30 +222,30 @@ void Scanner::FetchAttributes() {
 	outargs.load_buffer_inplace(&outXml[0], outXml.size());
 	std::string attribute_list;
 	bool first = true;
-	for(pugi::xml_node attr = outargs.child("outArgs").child("arg-xml").child("response").child("attrib_list").child("attribute"); 
-			attr; 
+	for(pugi::xml_node attr = outargs.child("outArgs").child("arg-xml").child("response").child("attrib_list").child("attribute");
+			attr;
 			attr = attr.next_sibling("attribute")) {
 		if(!first)
 			attribute_list += ',';
-		attribute_list += attr.child_value(); 
+		attribute_list += attr.child_value();
 		first = false;
 	}
 	FetchAttributes(attribute_list);
 }
 
 void Scanner::FetchAttributes(std::string attribute_list) {
-	std::string inXml = "<inArgs><scannerID>" + scannerID + 
-						"</scannerID><cmdArgs><arg-xml><attrib_list>" + 
+	std::string inXml = "<inArgs><scannerID>" + scannerID +
+						"</scannerID><cmdArgs><arg-xml><attrib_list>" +
 						attribute_list + "</attrib_list></arg-xml></cmdArgs></inArgs>";
-	
+
     StatusID sId;
 	std::string outXmlA;
 	::ExecCommand(CMD_RSM_ATTR_GET, inXml, outXmlA, &sId);
 	pugi::xml_document outargs;
 	outargs.load_buffer_inplace(&outXmlA[0], outXmlA.size());
 	std::string False("False");
-	for(pugi::xml_node attr = outargs.child("outArgs").child("arg-xml").child("response").child("attrib_list").child("attribute"); 
-			attr; 
+	for(pugi::xml_node attr = outargs.child("outArgs").child("arg-xml").child("response").child("attrib_list").child("attribute");
+			attr;
 			attr = attr.next_sibling("attribute")) {
 		Attribute a(this);
 		a.id = std::stoi(attr.child_value("id"));
@@ -398,8 +398,8 @@ void CoreScanner::OnPNPEvent( short eventType, std::string ppnpData )
     if (eventType == SCANNER_ATTACHED || eventType == SCANNER_DETACHED) {
 		pugi::xml_document outargs;
 		outargs.load_buffer_inplace(&ppnpData[0], ppnpData.size());
-		for(pugi::xml_node scanner = outargs.child("outargs").child("arg-xml").child("scanners").child("scanner"); 
-				scanner; 
+		for(pugi::xml_node scanner = outargs.child("outargs").child("arg-xml").child("scanners").child("scanner");
+				scanner;
 				scanner = scanner.next_sibling("scanner")) {
 			if (eventType == SCANNER_ATTACHED) {
 				FetchScanners();
@@ -452,8 +452,8 @@ void CoreScanner::OnBarcodeEvent(short int eventType, std::string & pscanData)
 		return;
 	}
 
-	for(pugi::xml_node scanData = args.child("arg-xml").child("scandata"); 
-			scanData; 
+	for(pugi::xml_node scanData = args.child("arg-xml").child("scandata");
+			scanData;
 			scanData = scanData.next_sibling("scandata")) {
 
 		std::string data = scanData.child_value("datalabel");
@@ -461,9 +461,9 @@ void CoreScanner::OnBarcodeEvent(short int eventType, std::string & pscanData)
 		for(std::string::iterator i=data.begin(); i!=data.end(); ++i) {
 			std::stringstream ss;
 			char c1 = *(i++) - 48;
-			if(c1 > 9) c1 -= 39; 
+			if(c1 > 9) c1 -= 39;
 			char c2 = *(i++) - 48;
-			if(c2 > 9) c2 -= 39; 
+			if(c2 > 9) c2 -= 39;
 			char d = 16*c1+c2;;
 			result.append(1, d);
 		}
@@ -471,8 +471,7 @@ void CoreScanner::OnBarcodeEvent(short int eventType, std::string & pscanData)
 		b.code = result;
 		b.type = std::stoi(scanData.child_value("datatype"));
 		PyGILState_STATE state = PyGILState_Ensure();
-		py::object o = py::cast(b);
-		s.OnBarcode(o);
+		s.OnBarcode(b);
 		PyGILState_Release(state);
 	}
 }
